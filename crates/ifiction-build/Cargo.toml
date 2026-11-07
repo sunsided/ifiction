@@ -1,0 +1,21 @@
+[package]
+name = "ifiction-build"
+description = "build.rs helper that embeds Treaty of Babel metadata (IFID, iFiction record) into a Rust game"
+keywords = ["interactive-fiction", "ifid", "ifiction", "babel", "build-script"]
+categories = ["game-development", "development-tools::build-utils"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ifiction.workspace = true
+serde.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

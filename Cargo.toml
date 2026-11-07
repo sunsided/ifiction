@@ -1,0 +1,54 @@
+[workspace]
+resolver = "3"
+members = ["crates/ifiction", "crates/ifiction-build", "crates/ifiction-cli", "examples/hello"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "EUPL-1.2 OR MIT OR Apache-2.0"
+repository = "https://github.com/sunsided/ifiction"
+homepage = "https://github.com/sunsided/ifiction"
+authors = ["Markus Mayer"]
+rust-version = "1.95"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+
+# CI and `task lint` run clippy with `-D warnings`, so `warn` here is a hard gate.
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+manual_let_else = "warn"
+redundant_closure_for_method_calls = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+
+[workspace.dependencies]
+# `version` lets the path deps publish to crates.io. Keep it in sync on a bump.
+ifiction       = { path = "crates/ifiction", version = "0.1.0", default-features = false }
+ifiction-build = { path = "crates/ifiction-build", version = "0.1.0" }
+
+anyhow    = "1.0.104"
+clap      = { version = "4.6.7", features = ["derive"] }
+# MD5 for the fallback IFIDs of the Treaty (`ELF-<MD5>`, `HTML-<MD5>`, ...).
+md-5      = "0.11.0"
+# Only the reader. The writer is hand-written, because the Treaty allows exactly three escapes.
+quick-xml = "0.42.0"
+serde     = { version = "1.0.229", features = ["derive"] }
+toml      = "1.2.1"
+# Edits Cargo.toml for `ifiction init` and keeps its formatting and comments.
+toml_edit = "0.25.19"
+# Only v4 generation, for new IFIDs.
+uuid      = { version = "1.29.1", features = ["v4"] }
+
+proptest  = "1.12.0"
+
+# A size-optimized release build, used by `task verify:embed` to check that the
+# embedded metadata survives fat LTO and stripping.
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A record in the style of the Treaty's examples (section 5.14): several IFIDs,
+     a release history, a format section, an annotation and an HTML entity. -->
+<ifindex version="1.0" xmlns="http://babel.ifarchive.org/protocol/iFiction/">
+  <story>
+    <identification>
+      <ifid>ZCODE-18-860904</ifid>
+      <ifid>ZCODE-15-851108</ifid>
+      <format>zcode</format>
+      <bafn>1234</bafn>
+    </identification>
+    <bibliographic>
+      <title>The Example Mine</title>
+      <author>Jane Doe and John Roe</author>
+      <language>en-US</language>
+      <headline>An Interactive Fiction</headline>
+      <firstpublished>1986</firstpublished>
+      <genre>Fantasy</genre>
+      <group>Infocom</group>
+      <description>You wake in a &ldquo;mine&rdquo;   that is
+        not a mine.<br/>Tom &amp; Jerry &lt;3 you.</description>
+      <forgiveness>Tough</forgiveness>
+    </bibliographic>
+    <releases>
+      <history>
+        <release>
+          <version>15</version>
+          <releasedate>1985-11-08</releasedate>
+          <compiler>ZIL</compiler>
+        </release>
+        <release>
+          <version>18</version>
+          <releasedate>1986-09-04</releasedate>
+        </release>
+      </history>
+    </releases>
+    <colophon>
+      <generator>Babel</generator>
+      <generatorversion>0.2b</generatorversion>
+      <originated>2006-04-14</originated>
+    </colophon>
+    <zcode>
+      <version>3</version>
+      <release>18</release>
+      <serial>860904</serial>
+    </zcode>
+    <annotation><zoom><rating>7</rating></zoom></annotation>
+  </story>
+  <story>
+    <identification>
+      <ifid>1974A053-7DB0-4103-93A1-767C1382C0B7</ifid>
+      <format>glulx</format>
+    </identification>
+    <bibliographic>
+      <title>Second</title>
+      <author>Anonymous</author>
+    </bibliographic>
+  </story>
+</ifindex>

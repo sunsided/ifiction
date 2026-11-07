@@ -1,0 +1,63 @@
+version: "3"
+
+vars:
+  CARGO: cargo
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list-all
+
+  fmt:
+    desc: Apply Rust formatting
+    cmds:
+      - "{{.CARGO}} fmt"
+
+  fmt:check:
+    desc: Check Rust formatting
+    cmds:
+      - "{{.CARGO}} fmt -- --check"
+
+  lint:
+    desc: Check clippy lints for all targets and feature sets
+    cmds:
+      - "{{.CARGO}} clippy --workspace --all-targets -- -D warnings"
+      - "{{.CARGO}} clippy -p ifiction --no-default-features -- -D warnings"
+      - "{{.CARGO}} clippy -p ifiction --all-features --all-targets -- -D warnings"
+
+  lint:workflows:
+    desc: Check the GitHub workflows with actionlint and zizmor (needs docker and uv)
+    cmds:
+      # Use the same versions as the job `workflows` in .github/workflows/ci.yml.
+      - docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+      - uvx zizmor@1.31.1 .github
+
+  test:
+    desc: Run all Rust tests
+    cmds:
+      - "{{.CARGO}} test --workspace"
+
+  check:wasm:
+    desc: Check the example for wasm32-unknown-unknown
+    cmds:
+      - "{{.CARGO}} clippy -p hello --target wasm32-unknown-unknown -- -D warnings"
+
+  verify:embed:
+    desc: Build the example with fat LTO, natively and for the web, and check the embedded metadata
+    cmds:
+      - scripts/verify-embed.sh
+
+  run:
+    desc: Run the ifiction CLI
+    cmds:
+      - "{{.CARGO}} run -q -p ifiction-cli -- {{.CLI_ARGS}}"
+
+  verify:
+    desc: Formatting, clippy, tests and the embedding check
+    cmds:
+      - task: fmt:check
+      - task: lint
+      - task: check:wasm
+      - task: test
+      - task: verify:embed

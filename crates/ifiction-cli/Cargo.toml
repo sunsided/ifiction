@@ -1,0 +1,27 @@
+[package]
+name = "ifiction-cli"
+description = "Command-line tool for Treaty of Babel metadata: IFIDs, iFiction records, HTML injection"
+keywords = ["interactive-fiction", "ifid", "ifiction", "babel", "cli"]
+categories = ["game-development", "command-line-utilities"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ifiction"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+ifiction = { workspace = true, features = ["read", "detect", "generate"] }
+ifiction-build.workspace = true
+toml_edit.workspace = true
+
+[lints]
+workspace = true

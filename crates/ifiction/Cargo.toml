@@ -1,0 +1,36 @@
+[package]
+name = "ifiction"
+description = "Treaty of Babel metadata for interactive fiction: IFIDs, iFiction records, HTML and binary embedding"
+keywords = ["interactive-fiction", "ifid", "ifiction", "babel", "metadata"]
+categories = ["game-development", "parser-implementations", "encoding"]
+readme = "../../README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[features]
+# A game that only embeds generated metadata (`include_generated!`) needs none of these.
+default = ["read", "detect", "generate"]
+# Parse iFiction XML.
+read = ["dep:quick-xml"]
+# Find IFIDs in arbitrary files, including the MD5 fallbacks of the Treaty.
+detect = ["read", "dep:md-5"]
+# Generate new UUID-based IFIDs.
+generate = ["dep:uuid"]
+serde = ["dep:serde"]
+
+[dependencies]
+md-5 = { workspace = true, optional = true }
+quick-xml = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,37 @@
+[package]
+name = "hello"
+description = "A tiny game that embeds its Treaty of Babel metadata. Built natively it is an executable; built for wasm32-unknown-unknown it is a web game."
+version = "0.1.0"
+publish = false
+default-run = "hello"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[package.metadata.ifiction]
+title = "Hello, Babel"
+headline = "A demonstration"
+genre = "Other"
+language = "en"
+first-published = "2026"
+forgiveness = "Merciful"
+release = 1
+wasm-custom-section = true
+
+[package.metadata.ifiction.ifid]
+executable = "B6C1A1D4-3B4E-4F0A-9E1F-2D2C9E2A7F10"
+html = "E2B7F0A9-5C3D-4E81-A6B2-7D9C4F1E0B35"
+
+[package.metadata.release]
+release = false
+
+[dependencies]
+ifiction.workspace = true
+
+[build-dependencies]
+ifiction-build.workspace = true
+
+[lints]
+workspace = true
