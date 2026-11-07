@@ -4,8 +4,11 @@
 //! and embedded records in binaries, and last the MD5 fallback of the Treaty
 //! (`ELF-<MD5>`, `MZ-<MD5>`, `HTML-<MD5>`, …; a bare MD5 for unknown files).
 //!
-//! babel itself does not scan native executables for markers; it always uses the MD5
-//! fallback for them. A marker in an executable is for tools like this one.
+//! This follows the Treaty of Babel revision 13 and the reference tool `babel` 0.75: a
+//! marker counts only in capitals; files of unknown format are treated as executables
+//! (marker, then a bare MD5); and the prefix of the MD5 fallback comes from babel's exact
+//! magic numbers (see [`babel_prefix`]). Embedded records without a marker are an extra of
+//! this crate.
 
 use md5::{Digest, Md5};
 
@@ -58,7 +61,7 @@ impl FileKind {
                 Some(n) if n < 45 => Self::MachO,
                 _ => Self::Java,
             },
-            [0x00, 0x00, 0x03, 0xf3, ..] => Self::Amiga,
+            [0x00, 0x00, 0x03, 0xe7 | 0xf3, ..] => Self::Amiga,
             [b'#', b'!', ..] => Self::Script,
             [0x00, b'a', b's', b'm', ..] => Self::Wasm,
             _ if text.starts_with("<?xml") && text.contains("<ifindex") => Self::IFiction,
@@ -71,20 +74,28 @@ impl FileKind {
             _ => Self::Unknown,
         }
     }
+}
 
-    /// The prefix of the MD5 fallback IFID (Treaty section 2.2.3.11).
-    fn fallback_prefix(self) -> &'static str {
-        match self {
-            Self::Html => "HTML-",
-            Self::Elf => "ELF-",
-            Self::Mz => "MZ-",
-            Self::MachO => "MACHO-",
-            Self::Java => "JAVA-",
-            Self::Amiga => "AMIGA-",
-            Self::Script => "SCRIPT-",
-            Self::IFiction | Self::Wasm | Self::Unknown => "",
-        }
-    }
+/// The prefix of the MD5 fallback IFID for executables, exactly as `babel` derives it
+/// (Treaty section 2.2.6.13; `executable.c` of babel 0.75).
+///
+/// babel knows fewer magic numbers than [`FileKind::sniff`]: only the 32-bit big-endian
+/// Mach-O magic `FEEDFACE` counts as `MACHO` (64-bit macOS binaries get a bare MD5), and
+/// `CAFEBABE` is always `JAVA`, also for fat Mach-O binaries.
+pub fn babel_prefix(bytes: &[u8]) -> &'static str {
+    const TABLE: [(&[u8], &str); 7] = [
+        (b"MZ", "MZ-"),
+        (b"\x7fELF", "ELF-"),
+        (b"\xca\xfe\xba\xbe", "JAVA-"),
+        (b"\x00\x00\x03\xe7", "AMIGA-"),
+        (b"#!", "SCRIPT-"),
+        (b"\xfe\xed\xfa\xce", "MACHO-"),
+        (b"APPL", "MAC-"),
+    ];
+    TABLE
+        .iter()
+        .find(|(magic, _)| bytes.starts_with(magic))
+        .map_or("", |(_, prefix)| prefix)
 }
 
 /// Where the IFIDs came from.
@@ -149,11 +160,17 @@ pub fn detect(bytes: &[u8]) -> Detected {
     found(Source::Fallback, vec![fallback_ifid(bytes, kind)])
 }
 
-/// The MD5 fallback IFID of the Treaty: a prefix for known kinds, then the MD5 in capitals.
+/// The MD5 fallback IFID of the Treaty: `HTML-` for web pages, babel's executable prefix
+/// ([`babel_prefix`]) for anything else, then the MD5 in capitals.
 pub fn fallback_ifid(bytes: &[u8], kind: FileKind) -> Ifid {
     let digest = Md5::digest(bytes);
     let hex: String = digest.iter().map(|b| format!("{b:02X}")).collect();
-    Ifid::parse(&format!("{}{hex}", kind.fallback_prefix())).expect("MD5 IFIDs are valid")
+    let prefix = match kind {
+        FileKind::Html => "HTML-",
+        FileKind::IFiction => "",
+        _ => babel_prefix(bytes),
+    };
+    Ifid::parse(&format!("{prefix}{hex}")).expect("MD5 IFIDs are valid")
 }
 
 #[cfg(test)]
@@ -186,9 +203,13 @@ mod tests {
     fn fallback() {
         // MD5("") = D41D8CD98F00B204E9800998ECF8427E.
         assert_eq!(
-            fallback_ifid(b"", FileKind::Elf).as_str(),
-            "ELF-D41D8CD98F00B204E9800998ECF8427E"
+            fallback_ifid(b"", FileKind::Unknown).as_str(),
+            "D41D8CD98F00B204E9800998ECF8427E"
         );
+        assert_eq!(babel_prefix(b"\xcf\xfa\xed\xfe"), "");
+        assert_eq!(babel_prefix(b"\xfe\xed\xfa\xce"), "MACHO-");
+        assert_eq!(babel_prefix(b"\xca\xfe\xba\xbe\0\0\0\x02"), "JAVA-");
+        assert_eq!(babel_prefix(b"APPL"), "MAC-");
         let d = detect(b"\x7fELF and nothing else");
         assert_eq!(d.source, Source::Fallback);
         assert!(d.ifids[0].as_str().starts_with("ELF-"));

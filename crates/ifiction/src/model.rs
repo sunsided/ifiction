@@ -1,4 +1,4 @@
-//! The iFiction record (Treaty of Babel, section 5).
+//! The iFiction record (Treaty of Babel revision 13, section 5).
 //!
 //! The types follow the XML sections. Text values hold plain text; the writer escapes them.
 //! A description holds its paragraphs separated by `\n`; the writer turns them into `<br/>`.
@@ -237,6 +237,8 @@ pub enum Format {
     Agt,
     Magscrolls,
     Advsys,
+    /// Quest 5.1+ games (Treaty revision 13).
+    Quest,
     /// A web page; also the format of a WASM game that runs in one.
     Html,
     /// A native program.
@@ -259,6 +261,7 @@ impl Format {
             Self::Agt => "agt",
             Self::Magscrolls => "magscrolls",
             Self::Advsys => "advsys",
+            Self::Quest => "quest",
             Self::Html => "html",
             Self::Executable => "executable",
             Self::Other(s) => s,
@@ -286,6 +289,7 @@ impl From<&str> for Format {
             "agt" => Self::Agt,
             "magscrolls" => Self::Magscrolls,
             "advsys" => Self::Advsys,
+            "quest" => Self::Quest,
             "html" => Self::Html,
             "executable" => Self::Executable,
             other => Self::Other(other.to_owned()),

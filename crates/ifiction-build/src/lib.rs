@@ -34,8 +34,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use ifiction::lint::{self, Diagnostic, Severity};
 use ifiction::model::{
-    Auxiliary, Colophon, Contacts, Cover, Forgiveness, Format, IfIndex, PartialDate, Release,
-    Releases, Story,
+    Auxiliary, Colophon, Contacts, Cover, Forgiveness, Format, FormatSection, IfIndex, PartialDate,
+    Release, Releases, Story,
 };
 use ifiction::{Ifid, write};
 use serde::Deserialize;
@@ -434,6 +434,72 @@ pub fn build_story(
     })
 }
 
+/// How this build is made: the target and the compiler.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildInfo {
+    /// The target triple, such as `x86_64-unknown-linux-gnu`.
+    pub target: Option<String>,
+    /// The rustc version, such as `1.99.1`.
+    pub rustc_version: Option<String>,
+}
+
+impl BuildInfo {
+    /// From the variables Cargo sets for build scripts (`TARGET`, `RUSTC`).
+    pub fn from_env() -> Self {
+        let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
+        Self {
+            target: std::env::var("TARGET").ok().filter(|t| !t.is_empty()),
+            rustc_version: rustc_version(&rustc),
+        }
+    }
+}
+
+/// `rustc 1.99.1 (58cf8f9c3 2026-10-13)` gives `1.99.1`.
+fn rustc_version(rustc: &str) -> Option<String> {
+    let out = std::process::Command::new(rustc)
+        .arg("--version")
+        .output()
+        .ok()?;
+    let text = String::from_utf8(out.stdout).ok()?;
+    parse_rustc_version(&text)
+}
+
+fn parse_rustc_version(text: &str) -> Option<String> {
+    let mut words = text.split_whitespace();
+    (words.next()? == "rustc").then_some(())?;
+    words.next().map(str::to_owned)
+}
+
+/// Adds the build to a record: rustc as the compiler of the attached release, and the
+/// target triple in the format section (`<executable>` or `<html>`).
+///
+/// The Treaty lists these two sections without defining their contents, and leaves each
+/// section to its design system (section 5.10), so `<target>` is this crate's convention.
+pub fn add_build_info(story: &mut Story, build: &BuildInfo) {
+    if let Some(version) = &build.rustc_version {
+        let release = story
+            .releases
+            .get_or_insert_with(Releases::default)
+            .attached
+            .as_mut();
+        if let Some(release) = release {
+            release.compiler = Some("rustc".to_owned());
+            release.compiler_version = Some(version.clone());
+        }
+    }
+    if let Some(target) = &build.target
+        && matches!(
+            story.identification.format,
+            Format::Executable | Format::Html
+        )
+    {
+        story.format_section = Some(FormatSection {
+            name: story.identification.format.to_string(),
+            entries: vec![("target".to_owned(), target.clone())],
+        });
+    }
+}
+
 /// What [`generate`] wrote.
 #[derive(Debug, Clone)]
 pub struct Generated {
@@ -470,7 +536,8 @@ pub fn generate() -> Result<Generated, Error> {
     };
     let meta = read_metadata(&manifest)?;
     let package = PackageInfo::from_env()?;
-    let built = build_story(&package_dir, &meta, &package, format.clone(), originated())?;
+    let mut built = build_story(&package_dir, &meta, &package, format.clone(), originated())?;
+    add_build_info(&mut built.story, &BuildInfo::from_env());
     for w in &built.warnings {
         println!("cargo::warning=iFiction: {}: {}", w.path, w.message);
     }
@@ -737,6 +804,48 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, Error::Lint(_)), "{err}");
+    }
+
+    #[test]
+    fn build_info() {
+        assert_eq!(
+            parse_rustc_version("rustc 1.99.1 (58cf8f9c3 2026-10-13)\n").as_deref(),
+            Some("1.99.1")
+        );
+        assert_eq!(parse_rustc_version("cargo 1.99.1"), None);
+
+        let mut built = build_story(
+            Path::new("."),
+            &meta(),
+            &package(),
+            Format::Html,
+            PartialDate::Year(2026),
+        )
+        .unwrap();
+        add_build_info(
+            &mut built.story,
+            &BuildInfo {
+                target: Some("wasm32-unknown-unknown".into()),
+                rustc_version: Some("1.99.1".into()),
+            },
+        );
+        let release = built
+            .story
+            .releases
+            .as_ref()
+            .unwrap()
+            .attached
+            .as_ref()
+            .unwrap();
+        assert_eq!(release.compiler.as_deref(), Some("rustc"));
+        assert_eq!(release.compiler_version.as_deref(), Some("1.99.1"));
+        let section = built.story.format_section.as_ref().unwrap();
+        assert_eq!(section.name, "html");
+        assert_eq!(
+            section.entries,
+            [("target".to_owned(), "wasm32-unknown-unknown".to_owned())]
+        );
+        assert!(!lint::has_errors(&lint::check(&built.story)));
     }
 
     #[test]

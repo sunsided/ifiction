@@ -3,7 +3,7 @@
 Treaty of Babel metadata for Rust games: IFIDs, iFiction records, and the ways to embed
 them in native programs, WASM modules and web pages.
 
-The [Treaty of Babel](https://babel.ifarchive.org/babel_rev11.html) is how the
+The [Treaty of Babel](https://babel.ifarchive.org/babel.html) (revision 13) is how the
 interactive fiction world identifies and describes games. IFDB, the IF Archive and
 interpreters use the IFID (a UUID, in capitals) and the iFiction record (an XML file with
 title, author, genre, cover and so on). This workspace makes a Rust game take part:
@@ -124,16 +124,19 @@ ifiction html inject FILE [--ifid ID | --manifest DIR] [-o OUT|-]
 ifiction html extract FILE
 ```
 
-`ifid` follows babel's order: the record of an iFiction file; in HTML the meta tag, then a
-`UUID://…//` marker, then Twine's `ifid` attribute; in other files markers and embedded
-records; last the Treaty's MD5 fallback (`ELF-<MD5>`, `MZ-<MD5>`, `MACHO-<MD5>`,
-`HTML-<MD5>`, or a bare MD5).
+`ifid` follows [babel](https://github.com/iftechfoundation/babel-tool) 0.75, the reference
+tool: the record of an iFiction file; in HTML the meta tag, then a `UUID://…//` marker, then
+Twine's `ifid` attribute; in other files the first marker (capitals only), then an embedded
+record; last the Treaty's MD5 fallback (`ELF-<MD5>`, `MZ-<MD5>`, `HTML-<MD5>`, …, or a bare
+MD5). The fallback prefixes use babel's magic numbers, so a 64-bit macOS binary or a WASM
+module gets a bare MD5. babel's own test files are part of the test suite, and CI compares
+both tools on the example's builds.
 
 ## Limits
 
-- babel itself does not look for markers in native executables. It gives them the MD5
-  fallback IFID. The embedded block is for this tool, for your own tooling and for IFDB
-  submissions; the HTML meta tag is what babel reads.
+- babel reads the `UUID://…//` marker in native executables, WASM modules and other files
+  (Treaty revision 13, section 2.2.5), so it finds the IFID of every build that keeps its
+  block. Older babel versions (revision 11) used the MD5 fallback for executables.
 - Read the block once, for example with `ifiction_meta::ifid()` behind a `--ifid` flag.
   `#[used]` keeps it from rustc, but linkers drop data that nothing refers to. Checked with
   fat LTO and stripping (`.github/workflows/embed-survival.yml`):
@@ -158,11 +161,13 @@ Tasks live in `Taskfile.dist.yaml` ([go-task](https://taskfile.dev)):
 | `task verify` | Formatting, clippy (all feature sets, wasm32), tests, embedding check |
 | `task verify:embed` | Build the example with fat LTO, natively and for the web, and check the embedded metadata |
 | `task lint:workflows` | actionlint and zizmor on `.github/` (needs docker and uv) |
+| `BABEL=… task verify:babel` | Compare IFIDs and records with a local [babel](https://github.com/iftechfoundation/babel-tool) build |
 | `task run -- <args>` | Run the `ifiction` CLI |
 | `task release:dry -- X.Y.Z` | Show what a release would do ([cargo-release](https://github.com/crate-ci/cargo-release)) |
 | `task release -- X.Y.Z` | Bump, stamp the changelog, commit, tag `vX.Y.Z` and push |
 
-CI (`.github/workflows/ci.yml`) runs the same checks, plus an MSRV build on Rust 1.95.
+CI (`.github/workflows/ci.yml`) runs the same checks, the babel comparison, and an MSRV
+build on Rust 1.95.
 A pushed `vX.Y.Z` tag runs `.github/workflows/release.yml`: a GitHub release with the
 changelog section as notes, CLI archives for Linux, macOS and Windows, and the crates on
 crates.io through trusted publishing (no stored token).

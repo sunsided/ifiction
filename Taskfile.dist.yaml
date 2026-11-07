@@ -48,6 +48,13 @@ tasks:
     cmds:
       - scripts/verify-embed.sh
 
+  verify:babel:
+    desc: "Compare IFIDs and records with babel (BABEL=/path/to/babel task verify:babel)"
+    requires:
+      vars: [BABEL]
+    cmds:
+      - BABEL="{{.BABEL}}" scripts/babel-conformance.sh
+
   run:
     desc: Run the ifiction CLI
     cmds:
