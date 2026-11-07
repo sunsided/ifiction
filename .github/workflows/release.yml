@@ -3,8 +3,8 @@ name: Release
 # Runs when a `vX.Y.Z` tag is pushed (`task release -- X.Y.Z` creates and pushes it):
 # 1. creates the GitHub release, with the tag's CHANGELOG.md section as notes;
 # 2. builds the `ifiction` CLI for Linux, macOS and Windows and attaches the archives;
-# 3. publishes the crates to crates.io in dependency order, if the repository has a
-#    CARGO_REGISTRY_TOKEN secret. Without it, the job says so and skips.
+# 3. publishes the crates to crates.io in dependency order, with trusted publishing
+#    (no stored token).
 on:
   push:
     tags: ["v*"]
@@ -100,6 +100,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # Trusted publishing: GitHub's OIDC token is traded for a short-lived crates.io token.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -107,16 +109,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           toolchain: stable
-      # Trusted publishing (OIDC) needs the crates to exist on crates.io first; switch to
-      # rust-lang/crates-io-auth-action after the first release and drop the token.
+      # The crates trust sunsided/ifiction's release.yml (crates.io settings of each crate).
+      # The action's post step revokes the token when the job ends.
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
       # `cargo publish --workspace` skips `publish = false` members and publishes the rest
       # in dependency order, waiting for the crates.io index between them.
       - name: Publish workspace
-        run: | # zizmor: ignore[use-trusted-publishing] (see the comment above)
-          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
-            echo "::notice::No CARGO_REGISTRY_TOKEN secret; not publishing to crates.io."
-            exit 0
-          fi
-          cargo publish --workspace --locked
+        run: cargo publish --workspace --locked
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

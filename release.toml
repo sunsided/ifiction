@@ -4,7 +4,8 @@
 # dependencies in [workspace.dependencies], stamps CHANGELOG.md, commits, tags `vX.Y.Z`
 # and pushes. The tag triggers .github/workflows/release.yml, which creates the GitHub
 # release (notes from CHANGELOG.md, CLI binaries attached) and publishes the crates to
-# crates.io in dependency order (ifiction, ifiction-build, ifiction-cli).
+# crates.io in dependency order (ifiction, ifiction-build, ifiction-cli) through
+# trusted publishing.
 #
 # Install once:  cargo install cargo-release --locked
 #

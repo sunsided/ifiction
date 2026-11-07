@@ -165,7 +165,7 @@ Tasks live in `Taskfile.dist.yaml` ([go-task](https://taskfile.dev)):
 CI (`.github/workflows/ci.yml`) runs the same checks, plus an MSRV build on Rust 1.95.
 A pushed `vX.Y.Z` tag runs `.github/workflows/release.yml`: a GitHub release with the
 changelog section as notes, CLI archives for Linux, macOS and Windows, and the crates on
-crates.io (only if the repository has a `CARGO_REGISTRY_TOKEN` secret).
+crates.io through trusted publishing (no stored token).
 Actions are pinned by commit SHA and check out without persisted credentials.
 
 ## License
