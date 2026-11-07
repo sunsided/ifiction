@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-07
+
 ### Added
 
 - `ifiction`: IFIDs (parse, generate, `UUID://…//` markers), the iFiction record model,
@@ -20,4 +22,5 @@ All notable changes to this project are documented here. The format follows
 - A manual workflow that checks on Linux, macOS and Windows that the embedded block
   survives fat LTO and stripping. The MSVC linker drops a block that the game never reads.
 
-[Unreleased]: https://github.com/sunsided/ifiction/commits/main
+[Unreleased]: https://github.com/sunsided/ifiction/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sunsided/ifiction/releases/tag/v0.1.0
