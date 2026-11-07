@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/ifiction", "crates/ifiction-build", "crates/ifiction-cli", "examples/hello"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "EUPL-1.2 OR MIT OR Apache-2.0"
 repository = "https://github.com/sunsided/ifiction"
@@ -27,8 +27,8 @@ uninlined_format_args = "warn"
 
 [workspace.dependencies]
 # `version` lets the path deps publish to crates.io. Keep it in sync on a bump.
-ifiction       = { path = "crates/ifiction", version = "0.1.0", default-features = false }
-ifiction-build = { path = "crates/ifiction-build", version = "0.1.0" }
+ifiction       = { path = "crates/ifiction", version = "0.2.0", default-features = false }
+ifiction-build = { path = "crates/ifiction-build", version = "0.2.0" }
 
 anyhow    = "1.0.104"
 clap      = { version = "4.6.7", features = ["derive", "env"] }

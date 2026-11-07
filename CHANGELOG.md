@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-07
+
 ### Added
 
 - `ifiction ifdb fetch`: a game's IFDB listing as iFiction XML or JSON, by IFID, by the IFID
@@ -58,5 +60,6 @@ All notable changes to this project are documented here. The format follows
 - A manual workflow that checks on Linux, macOS and Windows that the embedded block
   survives fat LTO and stripping. The MSVC linker drops a block that the game never reads.
 
-[Unreleased]: https://github.com/sunsided/ifiction/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sunsided/ifiction/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sunsided/ifiction/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sunsided/ifiction/releases/tag/v0.1.0

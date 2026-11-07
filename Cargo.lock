@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "ifiction"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "md-5",
  "proptest",
@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "ifiction-build"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ifiction",
  "proptest",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "ifiction-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
