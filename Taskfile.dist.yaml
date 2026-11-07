@@ -56,7 +56,7 @@ tasks:
   release:dry:
     desc: "Show what releasing would do (version as argument: task release:dry -- 0.2.0)"
     cmds:
-      - cargo release {{.CLI_ARGS}}
+      - cargo release {{.CLI_ARGS}} --no-publish
 
   release:
     desc: "Bump, stamp CHANGELOG.md, commit, tag and push; CI releases and publishes (task release -- 0.2.0)"
@@ -64,7 +64,8 @@ tasks:
       - sh: test -z "$(git status --porcelain)"
         msg: "The working tree has changes. Commit them first."
     cmds:
-      - cargo release {{.CLI_ARGS}} --execute --no-confirm
+      # --no-publish on top of `publish = false` in release.toml: crates.io only from CI.
+      - cargo release {{.CLI_ARGS}} --execute --no-confirm --no-publish
 
   verify:
     desc: Formatting, clippy, tests and the embedding check
