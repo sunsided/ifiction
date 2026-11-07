@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ifindex version="1.0" xmlns="http://babel.ifarchive.org/protocol/iFiction/">
+  <story>
+    <identification>
+      <ifid>1974A053-7DB0-4103-93A1-767C1382C0B7</ifid>
+      <format>html</format>
+      <tuid>abc123</tuid>
+    </identification>
+    <bibliographic>
+      <title>Hello &amp; Goodbye</title>
+      <author>Jane Doe</author>
+      <language>en-US</language>
+      <firstpublished>2024-02-29</firstpublished>
+      <description>One.<br/>Two &lt;three&gt;.</description>
+      <series>Tales</series>
+      <seriesnumber>2</seriesnumber>
+      <forgiveness>Merciful</forgiveness>
+    </bibliographic>
+    <resources>
+      <auxiliary>
+        <leafname>map.png</leafname>
+        <description>A map</description>
+      </auxiliary>
+    </resources>
+    <contacts>
+      <url>https://example.com/</url>
+      <authoremail>jane@example.com</authoremail>
+    </contacts>
+    <cover>
+      <format>png</format>
+      <height>480</height>
+      <width>960</width>
+      <description>A door</description>
+    </cover>
+    <releases>
+      <attached>
+        <release>
+          <version>2</version>
+          <releasedate>2024-03-01</releasedate>
+          <compiler>rustc</compiler>
+          <compilerversion>1.95</compilerversion>
+        </release>
+      </attached>
+    </releases>
+    <colophon>
+      <generator>ifiction</generator>
+      <generatorversion>0.1.0</generatorversion>
+      <originated>2024-03-01</originated>
+    </colophon>
+  </story>
+</ifindex>
