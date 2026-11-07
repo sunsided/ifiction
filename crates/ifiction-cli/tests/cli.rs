@@ -184,6 +184,7 @@ fn serve_once(body: &'static str) -> (String, std::thread::JoinHandle<String>) {
 fn ifiction_env(args: &[&str], env: &[(&str, &str)]) -> Output {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_ifiction"));
     cmd.args(args)
+        .env_remove("IFDB_URL")
         .env_remove("IFDB_USERNAME")
         .env_remove("IFDB_PASSWORD");
     for (k, v) in env {
