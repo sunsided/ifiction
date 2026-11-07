@@ -428,6 +428,7 @@ name = "ifiction-build"
 version = "0.1.0"
 dependencies = [
  "ifiction",
+ "proptest",
  "serde",
  "toml",
 ]
