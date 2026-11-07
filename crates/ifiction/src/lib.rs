@@ -41,7 +41,7 @@ pub use model::{
 /// }
 ///
 /// fn main() {
-///     // Reading the embedded block keeps it in the binary, even with LTO.
+///     // Read the block once: the MSVC linker drops it otherwise.
 ///     println!("IFID {}", ifiction_meta::ifid());
 /// }
 /// ```

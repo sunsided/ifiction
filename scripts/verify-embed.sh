@@ -2,7 +2,7 @@
 # Builds the example natively and for the web with fat LTO and stripping (profile `dist`),
 # then checks that each build carries its own IFID and an iFiction record that the
 # example itself reports. `hello-unref` never reads the block, so it checks that `#[used]`
-# alone keeps it through the linker.
+# alone keeps it through the linker (true for ELF, Mach-O and WASM; not for MSVC).
 #
 # Runs on Linux, macOS and Windows (Git Bash). SKIP_WASM=1 skips the web build.
 set -euo pipefail
@@ -39,9 +39,21 @@ check "native IFID (self-report)" "$("$native" --ifid)" "$want_exe"
 check "native record" "$("$cli" meta "$native")" "$("$native" --ifiction)"
 "$cli" lint "$native" >/dev/null
 echo "ok   native record lints"
-check "unreferenced block kept (marker)" "$("$cli" ifid "$unref")" "IFID: $want_exe"
-"$cli" lint "$unref" >/dev/null
-echo "ok   unreferenced record lints"
+if [[ -n "$exe" ]]; then
+  # MSVC's /OPT:REF drops a block that nothing reads; #[used] only binds rustc, not the
+  # linker. Games read it once (`ifid()`), which the checks above cover.
+  got=$("$cli" ifid "$unref")
+  got=${got//$'\r'/}
+  if [[ "$got" == "IFID: $want_exe" ]]; then
+    echo "ok   unreferenced block kept (marker) - MSVC kept it after all"
+  else
+    echo "note unreferenced block dropped by the MSVC linker (known; read it once with ifid())"
+  fi
+else
+  check "unreferenced block kept (marker)" "$("$cli" ifid "$unref")" "IFID: $want_exe"
+  "$cli" lint "$unref" >/dev/null
+  echo "ok   unreferenced record lints"
+fi
 
 work=target/verify-embed
 mkdir -p "$work"
