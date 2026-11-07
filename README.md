@@ -95,7 +95,9 @@ else is `executable`. `IFICTION_FORMAT=html` (or any format name) overrides it.
    ```
 
    The module has `IFID`, `FORMAT`, `TITLE`, `AUTHOR`, `ifid()`, `ifiction_xml()` and the
-   `#[used]` static `EMBEDDED`: `UUID://<IFID>//`, a newline, then the whole record.
+   `#[used]` static `EMBEDDED`: `UUID://<IFID>//`, a newline, then the whole record. Call
+   `ifid()` or `ifiction_xml()` somewhere, or the Windows linker drops the block (see
+   Limits).
 
 5. For the web build, put the IFID into the page:
 
@@ -132,9 +134,16 @@ records; last the Treaty's MD5 fallback (`ELF-<MD5>`, `MZ-<MD5>`, `MACHO-<MD5>`,
 - babel itself does not look for markers in native executables. It gives them the MD5
   fallback IFID. The embedded block is for this tool, for your own tooling and for IFDB
   submissions; the HTML meta tag is what babel reads.
-- `#[used]` keeps the block through fat LTO and stripping on Linux (ELF) and
-  `wasm32-unknown-unknown`, even if the game never reads it. macOS and Windows linkers are
-  not tested yet; calling `ifid()` once keeps the block there too.
+- Read the block once, for example with `ifiction_meta::ifid()` behind a `--ifid` flag.
+  `#[used]` keeps it from rustc, but linkers drop data that nothing refers to. Checked with
+  fat LTO and stripping (`.github/workflows/embed-survival.yml`):
+
+  | Target | Block kept when read | Block kept when never read |
+  |---|---|---|
+  | Linux (ELF) | yes | yes |
+  | macOS (Mach-O) | yes | yes |
+  | Windows (MSVC) | yes | **no**: `/OPT:REF` removes it |
+  | `wasm32-unknown-unknown` | yes | yes |
 - `wasm-custom-section = true` also writes the block into a WASM custom section named
   `ifiction`. That needs `#[unsafe(link_section)]`; the generated code allows
   `unsafe_code` for that item, which does not work under `#![forbid(unsafe_code)]`.
@@ -150,8 +159,13 @@ Tasks live in `Taskfile.dist.yaml` ([go-task](https://taskfile.dev)):
 | `task verify:embed` | Build the example with fat LTO, natively and for the web, and check the embedded metadata |
 | `task lint:workflows` | actionlint and zizmor on `.github/` (needs docker and uv) |
 | `task run -- <args>` | Run the `ifiction` CLI |
+| `task release:dry -- X.Y.Z` | Show what a release would do ([cargo-release](https://github.com/crate-ci/cargo-release)) |
+| `task release -- X.Y.Z` | Bump, stamp the changelog, commit, tag `vX.Y.Z` and push |
 
 CI (`.github/workflows/ci.yml`) runs the same checks, plus an MSRV build on Rust 1.95.
+A pushed `vX.Y.Z` tag runs `.github/workflows/release.yml`: a GitHub release with the
+changelog section as notes, CLI archives for Linux, macOS and Windows, and the crates on
+crates.io (only if the repository has a `CARGO_REGISTRY_TOKEN` secret).
 Actions are pinned by commit SHA and check out without persisted credentials.
 
 ## License

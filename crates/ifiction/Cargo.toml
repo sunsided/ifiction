@@ -34,3 +34,13 @@ proptest.workspace = true
 
 [lints]
 workspace = true
+
+[package.metadata.release]
+pre-release-replacements = [
+  # Turn the pending notes into the release's section and open a fresh [Unreleased] above it.
+  { file = "../../CHANGELOG.md", search = "## \\[Unreleased\\]", replace = "## [Unreleased]\n\n## [{{version}}] - {{date}}", exactly = 1 },
+  # Later releases: point [Unreleased] at the new tag and add a compare link.
+  { file = "../../CHANGELOG.md", search = "\\[Unreleased\\]: (\\S+)/compare/(\\S+)\\.\\.\\.HEAD", replace = "[Unreleased]: $1/compare/{{tag_name}}...HEAD\n[{{version}}]: $1/compare/$2...{{tag_name}}", min = 0, max = 1 },
+  # First release: there is no earlier tag to compare with.
+  { file = "../../CHANGELOG.md", search = "\\[Unreleased\\]: (\\S+)/commits/main", replace = "[Unreleased]: $1/compare/{{tag_name}}...HEAD\n[{{version}}]: $1/releases/tag/{{tag_name}}", min = 0, max = 1 },
+]

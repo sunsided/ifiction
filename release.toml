@@ -1,2 +1,33 @@
+# Config for `cargo release` (https://github.com/crate-ci/cargo-release).
+#
+# cargo-release bumps the shared workspace version, updates the `version` of the path
+# dependencies in [workspace.dependencies], stamps CHANGELOG.md, commits, tags `vX.Y.Z`
+# and pushes. The tag triggers .github/workflows/release.yml, which creates the GitHub
+# release (notes from CHANGELOG.md, CLI binaries attached) and publishes the crates to
+# crates.io in dependency order (ifiction, ifiction-build, ifiction-cli).
+#
+# Install once:  cargo install cargo-release --locked
+#
+#   task release:dry -- 0.2.0     # see what would happen
+#   task release -- 0.2.0         # bump, commit, tag, push; CI does the rest
+#
+# For the first release the version is already 0.1.0: `task release -- 0.1.0` works too.
+#
+# CHANGELOG.md: `## [Unreleased]` becomes `## [X.Y.Z] - <date>` under a fresh
+# `[Unreleased]`, and the links at the bottom move. The replacements live in
+# crates/ifiction/Cargo.toml ([package.metadata.release]), so the file is edited once.
+
+# All crates share the [workspace.package] version and move in lockstep.
 shared-version = true
+
+# One commit and one tag for the whole workspace.
+consolidate-commits = true
 tag-name = "v{{version}}"
+tag-message = "Release {{version}}"
+pre-release-commit-message = "Release {{version}}"
+
+# Only release from main.
+allow-branch = ["main"]
+
+# CI publishes when it sees the tag; never publish from a laptop by accident.
+publish = false

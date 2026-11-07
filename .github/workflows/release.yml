@@ -1,0 +1,122 @@
+name: Release
+
+# Runs when a `vX.Y.Z` tag is pushed (`task release -- X.Y.Z` creates and pushes it):
+# 1. creates the GitHub release, with the tag's CHANGELOG.md section as notes;
+# 2. builds the `ifiction` CLI for Linux, macOS and Windows and attaches the archives;
+# 3. publishes the crates to crates.io in dependency order, if the repository has a
+#    CARGO_REGISTRY_TOKEN secret. Without it, the job says so and skips.
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  github-release:
+    name: GitHub release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The notes are the tag's CHANGELOG.md section. Hard-wrapped lines are joined,
+      # because GitHub renders single newlines in release bodies as line breaks.
+      - name: Create release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## \[/ { if (p) exit; if (index($0, "## [" v "]") == 1) { p = 1; next } }
+            !p { next }
+            /^\[[^]]+\]: / { next }
+            /^$/ || /^#/ || /^- / { if (buf != "") print buf; buf = $0; if ($0 == "" || /^#/) { print buf; buf = "" }; next }
+            { sub(/^ +/, ""); buf = (buf == "" ? $0 : buf " " $0) }
+            END { if (buf != "") print buf }
+          ' CHANGELOG.md | sed -e '/./,$!d' > release-notes.md
+          if [ -s release-notes.md ]; then
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --verify-tag --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  binaries:
+    name: CLI (${{ matrix.target }})
+    needs: github-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked -p ifiction-cli --target "$TARGET"
+        env:
+          TARGET: ${{ matrix.target }}
+      - name: Package and upload
+        shell: bash
+        run: |
+          name="ifiction-${GITHUB_REF_NAME}-${TARGET}"
+          mkdir "$name"
+          cp README.md CHANGELOG.md LICENSE-* "$name/"
+          if [[ "$TARGET" == *windows* ]]; then
+            cp "target/$TARGET/release/ifiction.exe" "$name/"
+            7z a -tzip "$name.zip" "$name" >/dev/null
+            archive="$name.zip"
+          else
+            cp "target/$TARGET/release/ifiction" "$name/"
+            tar czf "$name.tar.gz" "$name"
+            archive="$name.tar.gz"
+          fi
+          gh release upload "$GITHUB_REF_NAME" "$archive"
+        env:
+          TARGET: ${{ matrix.target }}
+          GH_TOKEN: ${{ github.token }}
+
+  crates-io:
+    name: Publish to crates.io
+    needs: github-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      # Trusted publishing (OIDC) needs the crates to exist on crates.io first; switch to
+      # rust-lang/crates-io-auth-action after the first release and drop the token.
+      # `cargo publish --workspace` skips `publish = false` members and publishes the rest
+      # in dependency order, waiting for the crates.io index between them.
+      - name: Publish workspace
+        run: | # zizmor: ignore[use-trusted-publishing] (see the comment above)
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::notice::No CARGO_REGISTRY_TOKEN secret; not publishing to crates.io."
+            exit 0
+          fi
+          cargo publish --workspace --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
