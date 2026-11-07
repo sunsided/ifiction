@@ -169,7 +169,8 @@ pub fn check(story: &Story) -> Vec<Diagnostic> {
                 format!("{w}x{h}: each side must be at least 120 pixels"),
             );
         }
-        if w > 2 * h || h > 2 * w {
+        // In u64: 2 * w overflows u32 from 2^31.
+        if u64::from(w) > 2 * u64::from(h) || u64::from(h) > 2 * u64::from(w) {
             l.error(
                 "cover",
                 format!("{w}x{h}: the aspect ratio must be between 1:2 and 2:1"),
