@@ -471,7 +471,8 @@ fn parse_rustc_version(text: &str) -> Option<String> {
 }
 
 /// Adds the build to a record: rustc as the compiler of the attached release, and the
-/// target triple in the format section (`<executable>` or `<html>`).
+/// target triple in the format section (`<executable>` or `<html>`). Other entries of that
+/// section stay; an existing `target` is replaced.
 ///
 /// The Treaty lists these two sections without defining their contents, and leaves each
 /// section to its design system (section 5.10), so `<target>` is this crate's convention.
@@ -493,10 +494,18 @@ pub fn add_build_info(story: &mut Story, build: &BuildInfo) {
             Format::Executable | Format::Html
         )
     {
-        story.format_section = Some(FormatSection {
-            name: story.identification.format.to_string(),
-            entries: vec![("target".to_owned(), target.clone())],
-        });
+        let name = story.identification.format.to_string();
+        let section = match &mut story.format_section {
+            Some(section) if section.name == name => section,
+            other => other.insert(FormatSection {
+                name,
+                entries: Vec::new(),
+            }),
+        };
+        match section.entries.iter_mut().find(|(key, _)| key == "target") {
+            Some((_, value)) => value.clone_from(target),
+            None => section.entries.push(("target".to_owned(), target.clone())),
+        }
     }
 }
 
@@ -844,6 +853,29 @@ mod tests {
         assert_eq!(
             section.entries,
             [("target".to_owned(), "wasm32-unknown-unknown".to_owned())]
+        );
+
+        // Entries that are there stay; `target` is updated in place.
+        built
+            .story
+            .format_section
+            .as_mut()
+            .unwrap()
+            .entries
+            .insert(0, ("engine".to_owned(), "custom".to_owned()));
+        add_build_info(
+            &mut built.story,
+            &BuildInfo {
+                target: Some("wasm32-unknown-emscripten".into()),
+                rustc_version: None,
+            },
+        );
+        assert_eq!(
+            built.story.format_section.as_ref().unwrap().entries,
+            [
+                ("engine".to_owned(), "custom".to_owned()),
+                ("target".to_owned(), "wasm32-unknown-emscripten".to_owned()),
+            ]
         );
         assert!(!lint::has_errors(&lint::check(&built.story)));
     }
