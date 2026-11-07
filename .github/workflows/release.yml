@@ -98,6 +98,11 @@ jobs:
     name: Publish to crates.io
     needs: github-release
     runs-on: ubuntu-latest
+    # Only `v*` tags may deploy to this environment (repository settings). The crates'
+    # trusted publisher on crates.io names it too, so other jobs cannot get a token.
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/ifiction
     permissions:
       contents: read
       # Trusted publishing: GitHub's OIDC token is traded for a short-lived crates.io token.
