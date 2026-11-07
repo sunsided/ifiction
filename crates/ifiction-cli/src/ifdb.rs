@@ -4,6 +4,7 @@
 //! descriptive user agent; this module sends one request per command.
 
 use std::path::Path;
+use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 
@@ -23,9 +24,13 @@ const USER_AGENT: &str = concat!(
     " (+https://github.com/sunsided/ifiction)"
 );
 
+/// Gives up instead of hanging on a stalled connection. An upload with a 256 KiB cover
+/// still fits easily into the overall limit.
 fn agent() -> ureq::Agent {
     ureq::Agent::config_builder()
         .http_status_as_error(false)
+        .timeout_connect(Some(Duration::from_secs(15)))
+        .timeout_global(Some(Duration::from_secs(120)))
         .build()
         .into()
 }
@@ -181,11 +186,16 @@ impl Upload<'_> {
         if let Some(links) = &self.links {
             file("links", "links.xml", "text/xml", links.as_bytes());
         }
-        if let Some((path, bytes)) = &self.cover {
-            let name = path
-                .file_name()
-                .map_or("cover".into(), |n| n.to_string_lossy().replace('"', ""));
-            file("coverart", &name, image_type(bytes), bytes);
+        if let Some((_, bytes)) = &self.cover {
+            // IFDB ignores the file name; a fixed one keeps the part headers clean whatever
+            // the local file is called.
+            let name = match image_type(bytes) {
+                "image/png" => "cover.png",
+                "image/jpeg" => "cover.jpg",
+                "image/gif" => "cover.gif",
+                _ => "cover",
+            };
+            file("coverart", name, image_type(bytes), bytes);
         }
         body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
         (boundary, body)
@@ -367,7 +377,10 @@ mod tests {
             username: "me@example.org".into(),
             password: "s3cret".into(),
             ifiction: "<ifindex/>".into(),
-            cover: Some((Path::new("cover.png"), b"\x89PNGdata".to_vec())),
+            cover: Some((
+                Path::new("my\r\nX-Evil: 1\"cover.png"),
+                b"\x89PNGdata".to_vec(),
+            )),
             links: None,
             replace_links: true,
             image_copyright_status: Some("by permission".into()),
@@ -387,6 +400,10 @@ mod tests {
         ] {
             assert!(body.contains(part), "{part:?} missing");
         }
+        assert!(
+            !body.contains("X-Evil"),
+            "the local file name stays out of the body"
+        );
         assert!(!up.describe().join("\n").contains("s3cret"));
     }
 
