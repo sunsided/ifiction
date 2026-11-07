@@ -21,6 +21,10 @@ cargo build -q -p hello --profile dist --target wasm32-unknown-unknown --bins
 cli=target/debug/ifiction
 want_exe=$(sed -n 's/^executable = "\(.*\)"/\1/p' examples/hello/Cargo.toml)
 want_web=$(sed -n 's/^html = "\(.*\)"/\1/p' examples/hello/Cargo.toml)
+if [[ -z "$want_exe" || -z "$want_web" ]]; then
+  echo "FAIL could not read the executable and html IFIDs from examples/hello/Cargo.toml" >&2
+  exit 1
+fi
 
 "$cli" html inject examples/hello/index.html --manifest examples/hello -o "$work/index.html"
 "$cli" meta target/dist/hello > "$work/executable.iFiction"
