@@ -2,6 +2,7 @@
 # Runs every fuzz target for a short while (FUZZ_SECONDS each, default 30), then replays
 # the saved crash inputs in fuzz/regressions/<target>/. Needs cargo-fuzz and nightly Rust.
 set -euo pipefail
+shopt -s nullglob
 cd "$(dirname "$0")/.."
 
 seconds=${FUZZ_SECONDS:-30}
@@ -15,8 +16,10 @@ $cargo fuzz build --target "$triple"
 for target in $($cargo fuzz list); do
   echo "== $target (${seconds}s, $triple)"
   $cargo fuzz run --target "$triple" "$target" -- -max_total_time="$seconds"
-  if [[ -d fuzz/regressions/$target ]]; then
-    echo "== $target: regressions"
-    $cargo fuzz run --target "$triple" "$target" fuzz/regressions/"$target"/*
+  # An empty or missing regressions directory gives an empty list, not a literal "*".
+  regressions=(fuzz/regressions/"$target"/*)
+  if ((${#regressions[@]})); then
+    echo "== $target: ${#regressions[@]} regressions"
+    $cargo fuzz run --target "$triple" "$target" "${regressions[@]}"
   fi
 done
