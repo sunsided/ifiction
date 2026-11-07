@@ -196,7 +196,7 @@ fn init(manifest: &Path, formats: &[String]) -> Result<()> {
     let mut added = 0;
     for format in formats {
         if let Some(existing) = ifids.get(format).and_then(toml_edit::Item::as_str) {
-            Ifid::parse(existing).with_context(|| format!("existing IFID for {format}"))?;
+            Ifid::parse_lenient(existing).with_context(|| format!("existing IFID for {format}"))?;
             println!("{format}: {existing} (kept)");
             continue;
         }
@@ -233,7 +233,7 @@ fn manifest_ifid(manifest: &Path, format: &str) -> Result<Ifid> {
             manifest.display()
         )
     })?;
-    Ok(Ifid::parse(text)?)
+    Ok(Ifid::parse_lenient(text)?)
 }
 
 /// The record of a file, or one built from a manifest.

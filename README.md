@@ -76,7 +76,9 @@ else is `executable`. `IFICTION_FORMAT=html` (or any format name) overrides it.
    ```
 
    A record that breaks the Treaty (a bad language code, a cover smaller than 120 pixels,
-   …) fails the build. Guideline problems become `cargo` warnings.
+   …) fails the build. Guideline problems become `cargo` warnings. IFIDs may be written in
+   lowercase, as most UUID tools print them; the record, the marker and the HTML tag
+   always use capitals, as the Treaty requires.
 
 4. Include it:
 

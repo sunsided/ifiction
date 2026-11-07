@@ -63,6 +63,37 @@ fn lint_reports_and_fails() {
 }
 
 #[test]
+fn lowercase_manifest_ifids() {
+    let dir = temp_dir("lowercase");
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[package.metadata.ifiction.ifid]\nexecutable = \"1974a053-7db0-4103-93a1-767c1382c0b7\"\nhtml = \"448e73df-2d2f-47e7-a494-a46b40d4cfb3\"\n",
+    )
+    .unwrap();
+    let dir_arg = dir.to_str().unwrap();
+    assert!(ifiction(&["init", "--manifest", dir_arg]).status.success());
+    let xml = stdout(&ifiction(&["meta", dir_arg]));
+    assert!(
+        xml.contains("<ifid>1974A053-7DB0-4103-93A1-767C1382C0B7</ifid>"),
+        "{xml}"
+    );
+
+    let page = dir.join("index.html");
+    std::fs::write(&page, "<html><head></head></html>").unwrap();
+    let page_arg = page.to_str().unwrap();
+    assert!(
+        ifiction(&["html", "inject", page_arg, "--manifest", dir_arg])
+            .status
+            .success()
+    );
+    assert!(
+        std::fs::read_to_string(&page)
+            .unwrap()
+            .contains(r#"content="448E73DF-2D2F-47E7-A494-A46B40D4CFB3""#)
+    );
+}
+
+#[test]
 fn init_then_meta_then_html() {
     let dir = temp_dir("init");
     let manifest = dir.join("Cargo.toml");

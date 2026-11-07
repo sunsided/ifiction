@@ -119,7 +119,8 @@ impl std::error::Error for Error {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Metadata {
-    /// One IFID per format name, such as `executable` and `html`.
+    /// One IFID per format name, such as `executable` and `html`. Lowercase is accepted;
+    /// the record and the embedded block use capitals, as the Treaty requires.
     #[serde(default)]
     pub ifid: BTreeMap<String, String>,
     pub title: Option<String>,
@@ -322,7 +323,7 @@ pub fn build_story(
         .ok_or_else(|| Error::MissingIfid {
             format: format.to_string(),
         })?;
-    let ifid = Ifid::parse(ifid_text).map_err(|source| Error::Ifid {
+    let ifid = Ifid::parse_lenient(ifid_text).map_err(|source| Error::Ifid {
         format: format.to_string(),
         source,
     })?;
@@ -682,6 +683,22 @@ mod tests {
         assert_eq!(web.story.identification.format, Format::Html);
         let err = build_story(Path::new("."), &meta(), &package(), Format::Glulx, day).unwrap_err();
         assert!(matches!(err, Error::MissingIfid { .. }));
+    }
+
+    #[test]
+    fn lowercase_ifids_become_capitals() {
+        let mut m = meta();
+        m.ifid
+            .insert("html".into(), format!(" {} ", WEB.to_lowercase()));
+        let built = build_story(
+            Path::new("."),
+            &m,
+            &package(),
+            Format::Html,
+            PartialDate::Year(2026),
+        )
+        .unwrap();
+        assert_eq!(built.story.primary_ifid().unwrap().as_str(), WEB);
     }
 
     #[test]
