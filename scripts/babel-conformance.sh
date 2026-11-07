@@ -39,9 +39,10 @@ first_ifid() {
 check_ifid() {
   local file=$1 want=$2 ours theirs
   ours=$("$cli" ifid "$file" | first_ifid)
-  theirs=$("$babel" -ifid "$file" 2>&1 | first_ifid || true)
+  raw=$("$babel" -ifid "$file" 2>&1 || true)
+  theirs=$(first_ifid <<<"$raw" || true)
   if [[ "$ours" != "$theirs" ]]; then
-    fail "$file: ifiction says '$ours', babel says '$theirs'"
+    fail "$file: ifiction says '$ours', babel says '$theirs'"$'\n'"$raw"
   elif [[ -n "$want" && "$ours" != "IFID: $want" ]]; then
     fail "$file: both say '$ours', Cargo.toml says '$want'"
   else
@@ -56,8 +57,9 @@ check_ifid target/wasm32-unknown-unknown/dist/hello-unref.wasm "$want_web"
 check_ifid "$work/index.html" "$want_web"
 check_ifid "$work/executable.iFiction" "$want_exe"
 check_ifid "$work/html.iFiction" "$want_web"
-# No marker: both must fall back to the same MD5 IFID.
-check_ifid "$cli" ""
+# No marker: both must fall back to the same MD5 IFID. (Not the ifiction binary itself:
+# it contains the strings that format detectors look for.)
+check_ifid "$(command -v true)" ""
 check_ifid examples/hello/index.html ""
 
 for record in "$work/executable.iFiction" "$work/html.iFiction"; do

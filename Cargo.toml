@@ -31,13 +31,15 @@ ifiction       = { path = "crates/ifiction", version = "0.1.0", default-features
 ifiction-build = { path = "crates/ifiction-build", version = "0.1.0" }
 
 anyhow    = "1.0.104"
-clap      = { version = "4.6.7", features = ["derive"] }
+clap      = { version = "4.6.7", features = ["derive", "env"] }
 # MD5 for the fallback IFIDs of the Treaty (`ELF-<MD5>`, `HTML-<MD5>`, ...).
 md-5      = "0.11.0"
 # Only the reader. The writer is hand-written, because the Treaty allows exactly three escapes.
 quick-xml = "0.42.0"
 serde     = { version = "1.0.229", features = ["derive"] }
 toml      = "1.2.1"
+# Blocking HTTP client for the IFDB commands of the CLI (rustls, no OpenSSL).
+ureq      = "3.5.1"
 # Edits Cargo.toml for `ifiction init` and keeps its formatting and comments.
 toml_edit = "0.25.19"
 # Only v4 generation, for new IFIDs.

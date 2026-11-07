@@ -64,7 +64,11 @@ impl FileKind {
             [0x00, 0x00, 0x03, 0xe7 | 0xf3, ..] => Self::Amiga,
             [b'#', b'!', ..] => Self::Script,
             [0x00, b'a', b's', b'm', ..] => Self::Wasm,
-            _ if text.starts_with("<?xml") && text.contains("<ifindex") => Self::IFiction,
+            _ if (text.starts_with("<?xml") && text.contains("<ifindex"))
+                || text.starts_with("<ifindex") =>
+            {
+                Self::IFiction
+            }
             _ if text.starts_with("<!doctype html")
                 || text.starts_with("<html")
                 || text.contains("<head") =>
@@ -194,6 +198,11 @@ mod tests {
         assert_eq!(FileKind::sniff(b"  <!DOCTYPE html><html>"), FileKind::Html);
         assert_eq!(
             FileKind::sniff(b"\xEF\xBB\xBF<?xml version=\"1.0\"?><ifindex>"),
+            FileKind::IFiction
+        );
+        // IFDB's records have no XML declaration.
+        assert_eq!(
+            FileKind::sniff(b"<ifindex version=\"1.0\">"),
             FileKind::IFiction
         );
         assert_eq!(FileKind::sniff(b"hello"), FileKind::Unknown);
