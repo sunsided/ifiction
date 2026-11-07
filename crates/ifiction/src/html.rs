@@ -131,18 +131,15 @@ fn tags<'a>(html: &'a str, name: &'a str) -> impl Iterator<Item = (usize, usize)
     })
 }
 
-/// The offset just past the `>` that closes a tag, skipping quoted attribute values.
+/// The end of a tag: just past the next `>`, or just before the next `<`.
+///
+/// Quotes are not special, as in babel's own scanner: a tag is what babel reads as one, and
+/// malformed markup (a stray quote, an unclosed value) cannot swallow the rest of the
+/// document. [`inject`]'s tag has neither `<` nor `>` in it, so it is always found again.
+/// The cost: a `>` inside an attribute value ends the tag early, for babel as well.
 fn tag_end(s: &str) -> Option<usize> {
-    let mut quote = None;
-    for (i, c) in s.char_indices() {
-        match (quote, c) {
-            (None, '"' | '\'') => quote = Some(c),
-            (Some(q), c) if c == q => quote = None,
-            (None, '>') => return Some(i + 1),
-            _ => {}
-        }
-    }
-    None
+    let i = s.find(['<', '>'])?;
+    Some(if s.as_bytes()[i] == b'>' { i + 1 } else { i })
 }
 
 /// The value of an attribute in a start tag.
@@ -225,6 +222,14 @@ mod tests {
     }
 
     #[test]
+    fn stray_quote_does_not_hide_the_tag() {
+        // Found by a property test: the quote used to run to the end of the document.
+        let once = inject("<meta \"<head>", &ifid()).unwrap();
+        assert_eq!(inject(&once, &ifid()).unwrap(), once);
+        assert_eq!(extract_ifid(&once), Some((ifid(), HtmlSource::Meta)));
+    }
+
+    #[test]
     fn no_head() {
         assert_eq!(inject("<p>hi</p>", &ifid()), Err(HtmlError::NoHead));
     }
@@ -246,8 +251,9 @@ mod tests {
     }
 
     #[test]
-    fn quoted_gt_in_attribute() {
+    fn gt_in_attribute_ends_the_tag_like_babel() {
+        // babel reads `<meta name="a>` as the tag, so it finds no IFID here; neither do we.
         let html = format!(r#"<meta name="a>b" property="ifiction:ifid" content="{IFID}">"#);
-        assert_eq!(extract_ifid(&html), Some((ifid(), HtmlSource::Meta)));
+        assert_eq!(extract_ifid(&html), None);
     }
 }
