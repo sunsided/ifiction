@@ -10,8 +10,9 @@
 //! A game that only embeds its metadata needs no features:
 //! `ifiction = { version = "…", default-features = false }`.
 //!
-//! The specification is the Treaty of Babel, revision 11:
-//! <https://babel.ifarchive.org/babel_rev11.html>.
+//! The specification is the Treaty of Babel, revision 13:
+//! <https://babel.ifarchive.org/babel.html>. IFID detection matches `babel` 0.75, its
+//! reference tool.
 
 pub mod cover;
 #[cfg(feature = "detect")]

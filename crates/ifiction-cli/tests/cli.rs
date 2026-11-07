@@ -144,3 +144,133 @@ fn init_then_meta_then_html() {
         format!("IFID: {html_ifid}")
     );
 }
+
+/// Answers one HTTP request with `body`; returns the server's URL and the request it saw.
+fn serve_once(body: &'static str) -> (String, std::thread::JoinHandle<String>) {
+    use std::io::{BufRead, BufReader, Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let handle = std::thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = BufReader::new(stream.try_clone().unwrap());
+        let mut request = String::new();
+        let mut length = 0;
+        loop {
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                length = v.trim().parse().unwrap();
+            }
+            request.push_str(&line);
+            if line == "\r\n" {
+                break;
+            }
+        }
+        let mut payload = vec![0; length];
+        reader.read_exact(&mut payload).unwrap();
+        request.push_str(&String::from_utf8_lossy(&payload));
+        let mut stream = stream;
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        )
+        .unwrap();
+        request
+    });
+    (url, handle)
+}
+
+fn ifiction_env(args: &[&str], env: &[(&str, &str)]) -> Output {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_ifiction"));
+    cmd.args(args)
+        .env_remove("IFDB_URL")
+        .env_remove("IFDB_USERNAME")
+        .env_remove("IFDB_PASSWORD");
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+    cmd.output().expect("runs")
+}
+
+#[test]
+fn ifdb_fetch_sends_ifid_and_user_agent() {
+    let (url, server) = serve_once(
+        "<ifindex version=\"1.0\"><story><identification><ifid>ZCODE-1-2-3</ifid><format>zcode</format></identification><bibliographic><title>T</title><author>A</author></bibliographic></story></ifindex>",
+    );
+    let o = ifiction_env(&["ifdb", "fetch", "zcode-1-2-3"], &[("IFDB_URL", &url)]);
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    assert!(stdout(&o).contains("<ifid>ZCODE-1-2-3</ifid>"));
+    let request = server.join().unwrap();
+    assert!(
+        request.starts_with("GET /viewgame?ifiction&ifid=ZCODE-1-2-3 "),
+        "{request}"
+    );
+    assert!(
+        request
+            .to_ascii_lowercase()
+            .contains("user-agent: ifiction-cli/")
+    );
+}
+
+#[test]
+fn ifdb_fetch_reports_errors() {
+    let (url, server) = serve_once(
+        "<viewgame xmlns=\"http://ifdb.org/api/xmlns\"><errorCode>notFound</errorCode><errorMessage>No game</errorMessage></viewgame>",
+    );
+    let o = ifiction_env(&["ifdb", "fetch", "ZCODE-1-2-3"], &[("IFDB_URL", &url)]);
+    assert!(!o.status.success());
+    assert!(String::from_utf8_lossy(&o.stderr).contains("IFDB: notFound: No game"));
+    server.join().unwrap();
+}
+
+#[test]
+fn ifdb_put_uploads_multipart() {
+    let (url, server) = serve_once(
+        "<putific xmlns=\"http://ifdb.org/api/xmlns\"><ok/><created/><tuid>t123</tuid><viewUrl>https://ifdb.org/viewgame?id=t123</viewUrl></putific>",
+    );
+    let o = ifiction_env(
+        &[
+            "ifdb",
+            "put",
+            FIXTURE,
+            "--username",
+            "me@example.org",
+            "--image-copyright-status",
+            "public domain",
+        ],
+        &[("IFDB_URL", &url), ("IFDB_PASSWORD", "s3cret")],
+    );
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    assert_eq!(
+        stdout(&o),
+        "created\nTUID: t123\nhttps://ifdb.org/viewgame?id=t123\n"
+    );
+    let request = server.join().unwrap();
+    assert!(request.starts_with("POST /putific "), "{request}");
+    assert!(request.contains("multipart/form-data; boundary="));
+    assert!(request.contains("name=\"username\"\r\n\r\nme@example.org\r\n"));
+    assert!(request.contains("name=\"password\"\r\n\r\ns3cret\r\n"));
+    assert!(request.contains("name=\"imageCopyrightStatus\"\r\n\r\npublic domain\r\n"));
+    assert!(request.contains("<ifid>ZCODE-18-860904</ifid>"));
+}
+
+#[test]
+fn ifdb_put_dry_run_and_missing_credentials() {
+    let o = ifiction_env(
+        &["ifdb", "put", FIXTURE, "--dry-run"],
+        &[("IFDB_PASSWORD", "s3cret")],
+    );
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    let out = stdout(&o);
+    assert!(out.starts_with("POST https://ifdb.org/putific\n"), "{out}");
+    assert!(out.contains("password: (hidden)"));
+    assert!(!out.contains("s3cret"));
+
+    let o = ifiction_env(
+        &["ifdb", "put", FIXTURE],
+        &[("IFDB_URL", "http://127.0.0.1:9")],
+    );
+    assert!(!o.status.success());
+    assert!(String::from_utf8_lossy(&o.stderr).contains("IFDB_USERNAME"));
+}

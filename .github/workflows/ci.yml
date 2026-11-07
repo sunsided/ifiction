@@ -55,6 +55,34 @@ jobs:
       - run: cargo test --workspace --locked
       - run: scripts/verify-embed.sh
 
+  babel:
+    name: Conformance with babel
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # babel, the reference tool of the Treaty of Babel (0.75, Treaty revision 13).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: iftechfoundation/babel-tool
+          ref: 22467dde1240a4c7dfca1baf01b3a3fb9befa523
+          path: babel-tool
+          persist-credentials: false
+      - name: Build babel
+        run: make -C babel-tool babel
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Compare with babel
+        run: scripts/babel-conformance.sh
+        env:
+          BABEL: babel-tool/babel
+
   msrv:
     name: MSRV (1.95)
     runs-on: ubuntu-latest

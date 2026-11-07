@@ -1,5 +1,7 @@
 //! `ifiction`: Treaty of Babel metadata on the command line.
 
+mod ifdb;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -67,6 +69,65 @@ enum Command {
     /// The IFID meta tag of HTML story files.
     #[command(subcommand)]
     Html(HtmlCommand),
+    /// IFDB, the Interactive Fiction Database (https://ifdb.org).
+    #[command(subcommand)]
+    Ifdb(IfdbCommand),
+}
+
+#[derive(Subcommand)]
+enum IfdbCommand {
+    /// Print a game's IFDB listing as iFiction XML (or JSON).
+    ///
+    /// The listing is IFDB's community-edited data, not the author's record.
+    Fetch {
+        /// An IFID, or a file whose IFID to look up (a game, page or iFiction file).
+        what: String,
+        /// WHAT is an IFDB TUID, not an IFID.
+        #[arg(long)]
+        tuid: bool,
+        /// JSON instead of iFiction XML.
+        #[arg(long)]
+        json: bool,
+        /// Write here instead of standard output.
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Create or update a listing with an iFiction record (IFDB's putific API).
+    ///
+    /// Needs an IFDB account: --username (or IFDB_USERNAME) and the password in
+    /// IFDB_PASSWORD. Try --dry-run first.
+    Put {
+        /// An iFiction file, a game with an embedded record, or a Cargo.toml (or its
+        /// directory).
+        record: PathBuf,
+        /// The format to build for, with a Cargo.toml.
+        #[arg(long, default_value = "executable")]
+        format: String,
+        /// Cover art: JPEG, PNG or GIF, at most 256 KiB.
+        #[arg(long)]
+        cover: Option<PathBuf>,
+        /// The copyright status of the cover.
+        #[arg(long, value_parser = ["by permission", "creative commons", "free software", "fair use", "public domain", "unspecified"])]
+        image_copyright_status: Option<String>,
+        /// The copyright notice of the cover.
+        #[arg(long)]
+        image_copyright: Option<String>,
+        /// Download links, as IFDB's links XML (<downloads xmlns="http://ifdb.org/api/xmlns">).
+        #[arg(long)]
+        links: Option<PathBuf>,
+        /// Replace all links of the listing instead of merging by URL.
+        #[arg(long, requires = "links")]
+        replace_links: bool,
+        /// The listing's page version; needed when someone else edited it last.
+        #[arg(long)]
+        last_version: Option<String>,
+        /// The IFDB account (an email address).
+        #[arg(long, env = "IFDB_USERNAME")]
+        username: Option<String>,
+        /// Show what would be sent, without sending it.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -146,6 +207,103 @@ fn run(cli: Cli) -> Result<ExitCode> {
                 Some(p) if p == Path::new("-") => print!("{out}"),
                 Some(p) => write_file(p, &out)?,
                 None => write_file(&file, &out)?,
+            }
+        }
+        Command::Ifdb(IfdbCommand::Fetch {
+            what,
+            tuid,
+            json,
+            output,
+        }) => {
+            let ifid;
+            let key = if tuid {
+                ifdb::Key::Tuid(&what)
+            } else {
+                ifid = if Path::new(&what).is_file() {
+                    let d = detect::detect(&read_file(Path::new(&what))?);
+                    d.ifids[0].clone()
+                } else {
+                    Ifid::parse_lenient(&what)
+                        .with_context(|| format!("{what:?} is neither a file nor an IFID"))?
+                };
+                ifdb::Key::Ifid(ifid.as_str())
+            };
+            let text = ifdb::fetch(key, json)?;
+            match output {
+                Some(p) => write_file(&p, &text)?,
+                None => print!("{text}"),
+            }
+        }
+        Command::Ifdb(IfdbCommand::Put {
+            record,
+            format,
+            cover,
+            image_copyright_status,
+            image_copyright,
+            links,
+            replace_links,
+            last_version,
+            username,
+            dry_run,
+        }) => {
+            let xml = meta(&record, &format)?;
+            let index = read::from_str(&xml)?;
+            let diagnostics = lint::check_index(&index);
+            for d in &diagnostics {
+                eprintln!("{d}");
+            }
+            if lint::has_errors(&diagnostics) {
+                bail!("the record breaks the Treaty; fix it before uploading");
+            }
+            let cover = cover
+                .as_deref()
+                .map(|p| -> Result<_> {
+                    let bytes = read_file(p)?;
+                    if bytes.len() > 256 * 1024 {
+                        bail!("{}: IFDB takes covers up to 256 KiB", p.display());
+                    }
+                    Ok((p, bytes))
+                })
+                .transpose()?;
+            let links = links
+                .as_deref()
+                .map(|p| {
+                    std::fs::read_to_string(p)
+                        .with_context(|| format!("cannot read {}", p.display()))
+                })
+                .transpose()?;
+            let password = std::env::var("IFDB_PASSWORD").unwrap_or_default();
+            let upload = ifdb::Upload {
+                username: username.clone().unwrap_or_default(),
+                password,
+                ifiction: xml,
+                cover,
+                links,
+                replace_links,
+                image_copyright_status,
+                image_copyright,
+                last_version,
+            };
+            if dry_run {
+                println!("POST {}/putific", ifdb::base_url());
+                for line in upload.describe() {
+                    println!("  {line}");
+                }
+                return Ok(ExitCode::SUCCESS);
+            }
+            if upload.username.is_empty() {
+                bail!("give --username or set IFDB_USERNAME");
+            }
+            if upload.password.is_empty() {
+                bail!("set IFDB_PASSWORD");
+            }
+            let done = ifdb::put(&upload)?;
+            println!("{}", done.action);
+            if let Some(t) = done.tuid {
+                println!("TUID: {t}");
+            }
+            if let Some(u) = done.view_url {
+                println!("{u}");
             }
         }
         Command::Html(HtmlCommand::Extract { file }) => {

@@ -8,7 +8,8 @@ const MARKER_END: &[u8] = b"//";
 
 /// All `UUID://…//` markers, in file order, without duplicates.
 ///
-/// The Treaty uses the first one. Lowercase letters are capitalized.
+/// The Treaty uses the first one. Like babel, only digits, capitals and hyphens count:
+/// `UUID://1974a053-…//` is not a marker.
 pub fn find_markers(bytes: &[u8]) -> Vec<Ifid> {
     let mut out: Vec<Ifid> = Vec::new();
     let mut from = 0;
@@ -16,12 +17,12 @@ pub fn find_markers(bytes: &[u8]) -> Vec<Ifid> {
         let start = from + pos + MARKER_START.len();
         let len = bytes[start..]
             .iter()
-            .take_while(|b| b.is_ascii_alphanumeric() || **b == b'-')
+            .take_while(|b| b.is_ascii_digit() || b.is_ascii_uppercase() || **b == b'-')
             .count();
         from = start;
         if bytes[start + len..].starts_with(MARKER_END)
             && let Ok(s) = std::str::from_utf8(&bytes[start..start + len])
-            && let Ok(ifid) = Ifid::parse_lenient(s)
+            && let Ok(ifid) = Ifid::parse(s)
             && !out.contains(&ifid)
         {
             out.push(ifid);
@@ -75,13 +76,14 @@ mod tests {
     #[test]
     fn markers() {
         let bytes = b"\0\0UUID://1974a053-7DB0-4103-93A1-767C1382C0B7//junk UUID://bad UUID://ZCODE-1-2-3// UUID://1974A053-7DB0-4103-93A1-767C1382C0B7//";
+        // The lowercase one does not count.
         let found: Vec<String> = find_markers(bytes)
             .iter()
             .map(ToString::to_string)
             .collect();
         assert_eq!(
             found,
-            ["1974A053-7DB0-4103-93A1-767C1382C0B7", "ZCODE-1-2-3"]
+            ["ZCODE-1-2-3", "1974A053-7DB0-4103-93A1-767C1382C0B7"]
         );
     }
 
