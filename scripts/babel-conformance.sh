@@ -59,7 +59,7 @@ check_ifid "$work/executable.iFiction" "$want_exe"
 check_ifid "$work/html.iFiction" "$want_web"
 # No marker: both must fall back to the same MD5 IFID. (Not the ifiction binary itself:
 # it contains the strings that format detectors look for.)
-check_ifid "$(command -v true)" ""
+check_ifid "$(type -P true)" ""
 check_ifid examples/hello/index.html ""
 
 for record in "$work/executable.iFiction" "$work/html.iFiction"; do
