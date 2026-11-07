@@ -477,16 +477,13 @@ fn parse_rustc_version(text: &str) -> Option<String> {
 /// The Treaty lists these two sections without defining their contents, and leaves each
 /// section to its design system (section 5.10), so `<target>` is this crate's convention.
 pub fn add_build_info(story: &mut Story, build: &BuildInfo) {
-    if let Some(version) = &build.rustc_version {
-        let release = story
-            .releases
-            .get_or_insert_with(Releases::default)
-            .attached
-            .as_mut();
-        if let Some(release) = release {
-            release.compiler = Some("rustc".to_owned());
-            release.compiler_version = Some(version.clone());
-        }
+    // Only an attached release names its compiler; without one there is nothing to add to,
+    // and an empty <releases> would not be a valid record.
+    if let Some(version) = &build.rustc_version
+        && let Some(release) = story.releases.as_mut().and_then(|r| r.attached.as_mut())
+    {
+        release.compiler = Some("rustc".to_owned());
+        release.compiler_version = Some(version.clone());
     }
     if let Some(target) = &build.target
         && matches!(
@@ -854,6 +851,17 @@ mod tests {
             section.entries,
             [("target".to_owned(), "wasm32-unknown-unknown".to_owned())]
         );
+
+        // Without an attached release, no <releases> appears.
+        let mut bare = Story::new(Ifid::parse(WEB).unwrap(), Format::Html, "T", "A");
+        add_build_info(
+            &mut bare,
+            &BuildInfo {
+                target: None,
+                rustc_version: Some("1.99.1".into()),
+            },
+        );
+        assert_eq!(bare.releases, None);
 
         // Entries that are there stay; `target` is updated in place.
         built
