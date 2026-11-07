@@ -37,11 +37,15 @@ first_ifid() {
 }
 
 check_ifid() {
-  local file=$1 want=$2 ours theirs
-  ours=$("$cli" ifid "$file" | first_ifid)
+  local file=$1 want=$2 ours theirs ours_raw raw
+  # Neither tool may abort the script (set -e): a missing IFID is a reported failure.
+  ours_raw=$("$cli" ifid "$file" 2>&1 || true)
+  ours=$(first_ifid <<<"$ours_raw" || true)
   raw=$("$babel" -ifid "$file" 2>&1 || true)
   theirs=$(first_ifid <<<"$raw" || true)
-  if [[ "$ours" != "$theirs" ]]; then
+  if [[ -z "$ours" || -z "$theirs" ]]; then
+    fail "$file: no IFID from $([[ -z "$ours" ]] && echo ifiction || echo babel)"$'\n'"ifiction: $ours_raw"$'\n'"babel: $raw"
+  elif [[ "$ours" != "$theirs" ]]; then
     fail "$file: ifiction says '$ours', babel says '$theirs'"$'\n'"$raw"
   elif [[ -n "$want" && "$ours" != "IFID: $want" ]]; then
     fail "$file: both say '$ours', Cargo.toml says '$want'"
