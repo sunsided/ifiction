@@ -1,5 +1,7 @@
 //! Reading and writing whole records.
 
+#![cfg(feature = "read")]
+
 use ifiction::lint::{self, Severity};
 use ifiction::model::*;
 use ifiction::{Ifid, read, write};
@@ -160,4 +162,16 @@ proptest! {
         let found = ifiction::scan::find_markers(marker.as_bytes());
         prop_assert_eq!(found.len(), 1);
     }
+}
+
+#[test]
+fn br_outside_description_is_a_space() {
+    // Found by fuzzing: <br/> used to become a newline in every element, which the writer
+    // then wrote as text, so a write and read changed the record.
+    let xml = "<ifindex><story><identification><ifid>ZCODE-1-2-3</ifid><format>zcode</format></identification><bibliographic><title>A<br/>B</title><author>C</author><description>One<br/>Two</description></bibliographic></story></ifindex>";
+    let index = read::from_str(xml).unwrap();
+    let b = &index.stories[0].bibliographic;
+    assert_eq!(b.title, "A B");
+    assert_eq!(b.description.as_deref(), Some("One\nTwo"));
+    assert_eq!(read::from_str(&write::to_string(&index)).unwrap(), index);
 }

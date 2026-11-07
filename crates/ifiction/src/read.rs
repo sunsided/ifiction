@@ -147,8 +147,16 @@ impl Element {
         })
     }
 
-    /// The text content with whitespace runs collapsed; `<br/>` becomes `\n`.
+    /// The text content with whitespace runs collapsed into single spaces. Markup counts as
+    /// text separation only: `<br/>` is a space here (see [`Element::paragraphs`]).
     fn text(&self) -> String {
+        self.paragraphs().replace('\n', " ")
+    }
+
+    /// Like [`Element::text`], but `<br/>` separates paragraphs with `\n`. Only
+    /// `<bibliographic><description>` has paragraphs (Treaty section 5.6), and only it is
+    /// written with `<br/>`, so only it is read this way.
+    fn paragraphs(&self) -> String {
         let mut paragraphs = vec![String::new()];
         self.collect_text(&mut paragraphs);
         paragraphs
@@ -308,7 +316,10 @@ fn story(s: &Element) -> Result<Story, ReadError> {
         first_published: b.opt_date("firstpublished")?,
         genre: b.opt_text("genre"),
         group: b.opt_text("group"),
-        description: b.opt_text("description"),
+        description: b
+            .child("description")
+            .map(Element::paragraphs)
+            .filter(|t| !t.is_empty()),
         series: b.opt_text("series"),
         series_number: b.opt_number("seriesnumber")?,
         forgiveness: b.opt_text("forgiveness").map(|f| f.parse()).transpose()?,
