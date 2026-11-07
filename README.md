@@ -122,7 +122,25 @@ ifiction lint FILE [--strict]            like babel -lint; FILE may be a game bi
 ifiction identify FILE
 ifiction html inject FILE [--ifid ID | --manifest DIR] [-o OUT|-]
 ifiction html extract FILE
+ifiction ifdb fetch IFID|FILE [--tuid] [--json] [-o OUT]
+ifiction ifdb put RECORD [--cover IMG] [--links XML] [--dry-run] …
 ```
+
+### IFDB
+
+`ifdb fetch` prints a game's [IFDB](https://ifdb.org) listing as iFiction XML (`--json` for
+JSON), looked up by IFID, by the IFID of a file, or by TUID. The listing is IFDB's
+community-edited copy, not the author's record.
+
+`ifdb put` creates or updates a listing through IFDB's
+[putific](https://ifdb.org/api/putific) API. The record can be an iFiction file, a game
+binary with an embedded record, or a `Cargo.toml` (`--format html|executable`); lint errors
+stop the upload. Pass the account with `--username` or `IFDB_USERNAME` and the password in
+`IFDB_PASSWORD`, and try `--dry-run` first. IFDB takes a cover up to 256 KiB
+(`--cover`, with `--image-copyright-status`), download links as its
+[links XML](https://ifdb.org/api/putific) (`--links`, `--replace-links`), and
+`--last-version` when someone else edited the listing last. `put` is tested against a
+local server only, not against IFDB itself.
 
 `ifid` follows [babel](https://github.com/iftechfoundation/babel-tool) 0.75, the reference
 tool: the record of an iFiction file; in HTML the meta tag, then a `UUID://…//` marker, then
@@ -150,7 +168,7 @@ both tools on the example's builds.
 - `wasm-custom-section = true` also writes the block into a WASM custom section named
   `ifiction`. That needs `#[unsafe(link_section)]`; the generated code allows
   `unsafe_code` for that item, which does not work under `#![forbid(unsafe_code)]`.
-- Not supported yet: Blorb, IFDB lookups and `putific` uploads.
+- Not supported yet: Blorb ([#4](https://github.com/sunsided/ifiction/issues/4)).
 
 ## Development
 

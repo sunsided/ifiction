@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `ifiction ifdb fetch`: a game's IFDB listing as iFiction XML or JSON, by IFID, by the IFID
+  of a file, or by TUID.
+- `ifiction ifdb put`: create or update an IFDB listing through the putific API, with cover,
+  links and copyright fields, and `--dry-run`. Tested against a local server only.
+- The `quest` format of Treaty revision 13.
+- Generated records name the compiler (`rustc` and its version) in the attached release and
+  the target triple in the `<executable>` or `<html>` section.
+- CI compares IFIDs, `-verify` and `-lint` with babel 0.75, the Treaty's reference tool, and
+  the test suite includes babel's own test files.
+
+### Changed
+
+- IFID detection follows babel 0.75 and Treaty revision 13: a `UUID://…//` marker counts only
+  in capitals, and the MD5 fallback prefixes use babel's magic numbers (64-bit macOS binaries
+  and WASM modules get a bare MD5, `CAFEBABE` is always `JAVA`, Amiga is `000003E7`).
+- iFiction records without an XML declaration, as IFDB serves them, are recognized as such.
+
 ## [0.1.0] - 2026-11-07
 
 ### Added
