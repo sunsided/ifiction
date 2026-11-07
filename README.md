@@ -180,12 +180,15 @@ Tasks live in `Taskfile.dist.yaml` ([go-task](https://taskfile.dev)):
 | `task verify:embed` | Build the example with fat LTO, natively and for the web, and check the embedded metadata |
 | `task lint:workflows` | actionlint and zizmor on `.github/` (needs docker and uv) |
 | `BABEL=… task verify:babel` | Compare IFIDs and records with a local [babel](https://github.com/iftechfoundation/babel-tool) build |
+| `task fuzz -- <target>`, `task fuzz:smoke` | Fuzz one target with [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz), or all briefly (needs nightly Rust; `task fuzz:list` lists them) |
 | `task run -- <args>` | Run the `ifiction` CLI |
 | `task release:dry -- X.Y.Z` | Show what a release would do ([cargo-release](https://github.com/crate-ci/cargo-release)) |
 | `task release -- X.Y.Z` | Bump, stamp the changelog, commit, tag `vX.Y.Z` and push |
 
 CI (`.github/workflows/ci.yml`) runs the same checks, the babel comparison, and an MSRV
 build on Rust 1.95.
+`.github/workflows/fuzz.yml` fuzzes every target for 30 seconds and replays the saved
+crash inputs in `fuzz/regressions/` when the library or the fuzz targets change.
 A pushed `vX.Y.Z` tag runs `.github/workflows/release.yml`: a GitHub release with the
 changelog section as notes, CLI archives for Linux, macOS and Windows, and the crates on
 crates.io through trusted publishing (no stored token).

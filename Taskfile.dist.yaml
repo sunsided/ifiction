@@ -55,6 +55,21 @@ tasks:
     cmds:
       - BABEL="{{.BABEL}}" scripts/babel-conformance.sh
 
+  fuzz:list:
+    desc: List the fuzz targets (needs cargo-fuzz and nightly Rust)
+    cmds:
+      - cargo +nightly fuzz list
+
+  fuzz:
+    desc: "Run one fuzz target (task fuzz -- read_ifiction -- -max_total_time=60)"
+    cmds:
+      - cargo +nightly fuzz run {{.CLI_ARGS}}
+
+  fuzz:smoke:
+    desc: "Run every fuzz target briefly and replay the saved crashes (FUZZ_SECONDS=30 each)"
+    cmds:
+      - fuzz/smoke.sh
+
   run:
     desc: Run the ifiction CLI
     cmds:

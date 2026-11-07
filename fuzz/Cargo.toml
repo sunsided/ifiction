@@ -1,0 +1,58 @@
+[package]
+name = "ifiction-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Its own workspace, so the main workspace (and its stable toolchain) never builds it.
+[workspace]
+
+[dependencies]
+arbitrary = { version = "1.4.2", features = ["derive"] }
+ifiction = { path = "../crates/ifiction" }
+libfuzzer-sys = "0.4.12"
+
+[[bin]]
+name = "read_ifiction"
+path = "fuzz_targets/read_ifiction.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "detect"
+path = "fuzz_targets/detect.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "scan"
+path = "fuzz_targets/scan.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html"
+path = "fuzz_targets/html.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cover"
+path = "fuzz_targets/cover.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "story"
+path = "fuzz_targets/story.rs"
+test = false
+doc = false
+bench = false
