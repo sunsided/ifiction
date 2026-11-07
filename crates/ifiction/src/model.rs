@@ -385,7 +385,8 @@ impl fmt::Display for DateError {
 impl std::error::Error for DateError {}
 
 impl PartialDate {
-    /// The calendar day of a Unix timestamp, in UTC.
+    /// The calendar day of a Unix timestamp, in UTC. Times outside the years 0 to 9999
+    /// give 0000-01-01 or 9999-12-31.
     pub fn from_unix_seconds(secs: i64) -> Self {
         // Howard Hinnant's civil_from_days.
         let z = secs.div_euclid(86_400) + 719_468;
@@ -397,10 +398,23 @@ impl PartialDate {
         let day = (doy - (153 * mp + 2) / 5 + 1) as u8;
         let month = if mp < 10 { mp + 3 } else { mp - 9 } as u8;
         let year = yoe + era * 400 + i64::from(month <= 2);
-        Self::Date {
-            year: year.clamp(0, 9999) as u16,
-            month,
-            day,
+        // The Treaty's dates have four digits; clamp to whole valid days at both ends.
+        match year {
+            ..0 => Self::Date {
+                year: 0,
+                month: 1,
+                day: 1,
+            },
+            10_000.. => Self::Date {
+                year: 9999,
+                month: 12,
+                day: 31,
+            },
+            _ => Self::Date {
+                year: year as u16,
+                month,
+                day,
+            },
         }
     }
 }
@@ -493,6 +507,15 @@ mod tests {
         assert_eq!(
             PartialDate::from_unix_seconds(1_794_009_600).to_string(),
             "2026-11-07"
+        );
+        // 10004-02-29 used to become the invalid 9999-02-29.
+        assert_eq!(
+            PartialDate::from_unix_seconds(253_533_628_800).to_string(),
+            "9999-12-31"
+        );
+        assert_eq!(
+            PartialDate::from_unix_seconds(i64::MIN).to_string(),
+            "0000-01-01"
         );
     }
 
